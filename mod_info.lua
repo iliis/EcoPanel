@@ -1,0 +1,16 @@
+name = "Eco Panel"
+uid = "44b382c7-7769-4c27-b47c-EcoPanel-V1"
+version = 1
+copyright = "GPL v3"
+description = "Show your entire economy."
+author = "iliis"
+url = "https://github.com/iliis/EcoPanel"
+icon = "/mods/EcoPanel/icon.png"
+selectable = true
+enabled = true
+exclusive = false
+ui_only = true
+requires = {}
+conflicts = {}
+before = {}
+after = {}
