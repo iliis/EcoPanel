@@ -103,7 +103,7 @@ function create_button(parent, text, W, H)
 		'/textures/ui/common/dialogs/standard_btn/standard_btn_down.dds',
 		'/textures/ui/common/dialogs/standard_btn/standard_btn_over.dds',
 		'/textures/ui/common/dialogs/standard_btn/standard_btn_dis.dds')
-	button.Depth:Set(99)
+	button.Depth:Set(parent.Depth() + 10)
 	button.Width:Set(W)
 	button.Height:Set(H)
 	button:EnableHitTest(true)
