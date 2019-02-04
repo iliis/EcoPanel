@@ -117,3 +117,10 @@ function create_button(parent, text, W, H)
 end
 
 ---------------------------------------------------------------------------------------------------
+
+function modulo(a, b)
+	-- according to http://www.lua.org/manual/5.2/manual.html#3.4.1
+	return a - math.floor(a/b) * b
+end
+
+---------------------------------------------------------------------------------------------------
