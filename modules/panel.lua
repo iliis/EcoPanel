@@ -56,6 +56,15 @@ end
 function create()
     panel = Group(GetFrame(0))
     panel:DisableHitTest(true)
+
+	local PieChart = import('/mods/EcoPanel/modules/piechart.lua').PieChart
+
+	local chart = PieChart(panel, {1,5,20,5,30,18})
+	chart.Top:Set(300)
+	chart.Left:Set(600)
+	chart.Width:Set(300)
+	chart.Height:Set(300)
+	chart:plot()
     
     -- catch mouse clicks by putting the UI in front of game, we don't want to be able to click through our panel
     panel.Depth:Set(100)
@@ -77,7 +86,6 @@ function create()
     bg_border.Width = panel.Width
     bg_border.Height = panel.Height
     
-
     local bg = Bitmap(panel)
     bg:SetSolidColor('ff111111')
     bg.Left:Set(panel.Left()+2)
@@ -189,6 +197,9 @@ function add_factory(factory)
 
     local bp = factory:GetBlueprint()
 
+	-- background and main object
+	-----------------------------------------------------------------
+
 	local obj = Bitmap(panel)
 	obj:SetSolidColor('ff333333')
 
@@ -207,6 +218,11 @@ function add_factory(factory)
 
 	obj.factory = factory
 
+	-- icon
+	-----------------------------------------------------------------
+
+	-- TODO: add land/water/air background depending on type
+
     obj.icon = Bitmap(obj, UIUtil.UIFile(bp['RuntimeData']['IconFileName']))
     obj.icon.Left:Set(function() return obj.Left() + padding end)
     obj.icon.Top :Set(function() return obj.Top() + padding end)
@@ -222,6 +238,9 @@ function add_factory(factory)
     --INFO:         }
 
     
+
+	-- labels
+	-----------------------------------------------------------------
 
     obj.name_label = UIUtil.CreateText(obj, LOC(bp['Interface']['HelpText']), 15, UIUtil.bodyFont)
 	obj.name_label:SetColor('white')
@@ -241,18 +260,9 @@ function add_factory(factory)
 	obj.state_label.Left = obj.icon.Left
 
 
-    --obj.pause_button = helpers.create_button(obj, "pause", 50, 30)
-    --obj.pause_button.Top:Set(obj.name_label.Bottom() + padding)
-    --obj.pause_button.Left = obj.name_label.Left
-    --obj.pause_button.OnClick = function (self, modifiers)
-        --if GetIsPaused({factory}) then
-            --SetPaused({factory},  false)
-            --pause_button.label:SetText("pause")
-        --else
-            --SetPaused({factory},  true)
-            --pause_button.label:SetText("unpause")
-        --end
-	--end
+
+	-- buttons
+	-----------------------------------------------------------------
 
 	local button_size = (ICON_SIZE-2*padding)/3
 
@@ -351,6 +361,7 @@ function add_factory(factory)
 
 	--obj.Height:Set(obj.repeat_button:Bottom() + padding - panel.factories_label:Bottom() - margin)
 
+	-----------------------------------------------------------------
 
 	obj.update = function (self)
 
