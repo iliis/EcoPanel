@@ -59,7 +59,8 @@ function create()
 
 	local PieChart = import('/mods/EcoPanel/modules/piechart.lua').PieChart
 
-	local chart = PieChart(panel, {1,5,20,5,30,18})
+	local chart = PieChart(panel, {1,5,20,5,30,18,20,10,20,30,40,10,10,10})
+	--local chart = PieChart(panel, {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1})
 	chart.Top:Set(300)
 	chart.Left:Set(600)
 	chart.Width:Set(300)

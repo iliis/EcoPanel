@@ -6,12 +6,19 @@ local helpers = import('/mods/EcoPanel/modules/helpers.lua')
 
 
 local textures = { }
+local texture_count = 0
 
 -- load textures
+-- (i counts from 1!)
 for i, filename in DiskFindFiles('/mods/EcoPanel/textures/triangle/', '*.png') do
 	local name = Basename(filename, true)
 	textures[name] = filename
-	textures[i] = filename
+	textures[i-1] = filename
+	texture_count = i
+end
+
+function get_color_texture(idx)
+	return textures[helpers.modulo(idx, texture_count)]
 end
 
 
@@ -91,17 +98,15 @@ PieChart = Class(Group) {
 
 		local normalized_values = normalize_list(self.values)
 
-
 		-- from 0 to 1
 		local last_angle = 0
 		local next_angle = 0
 
 		for idx, value in normalized_values do
-			LOG("plotting segment for value " .. tostring(value))
+			--LOG("plotting segment nr " .. tostring(idx) .. " for value " .. tostring(value))
 			next_angle = next_angle + value
 
 			while self:angle_to_sector(last_angle) != self:angle_to_sector(next_angle) do
-				LOG(" - goes from sector " .. tostring(self:angle_to_sector(last_angle)) .. " to sector " .. tostring(self:angle_to_sector(next_angle)))
 				-- segment spans sector border
 				-- add segment from last value up until border
 				local border_angle = (self:angle_to_sector(last_angle)+1)/8
@@ -120,7 +125,14 @@ PieChart = Class(Group) {
 	-- plot() takes care of splitting the actual segments into smaller ones, so they fit into 8 quadrants
 	-- each of these smaller segments is then drawn by add_segment()
 	-- we therefore expect 'from' and 'to' angles to be in the same sector (1/8th = 45 degrees)
+	-- attention: angles (from and to) are in percent of 360 degrees, ie. go from 0 to 1!
 	add_segment = function(self, from, to, color)
+
+		-- ignore very small or degenerate segments
+		if math.abs(to-from) < 0.00001 then
+			return
+		end
+
 		local sector = self:angle_to_sector(from)
 		local odd_sector = helpers.modulo(sector, 2) > 0
 
@@ -135,37 +147,82 @@ PieChart = Class(Group) {
 		from = from - sector/8
 		to   = to   - sector/8
 
-		if sector < 2 then
-			LOG("  >>> adding segment nr " .. tostring(idx) .. " ("..tostring(odd_sector)..") from " .. tostring(from) .. " to " .. tostring(to))
-			local segment = Bitmap(self, textures[color])
-			segment.Left   = function() return self:centerX() end
-			segment.Bottom = function() return self:centerY() end
+		-- convert them to actual angles in radians
+		from = from * math.pi * 2
+		to   = to   * math.pi * 2
 
-			if not odd_sector then
-				segment.Width  = function () return math.ceil(self.Width() / 2) end
-				segment.Height = function () return math.ceil(self.Height() / 2 * to*8) end
-			else
-				segment.Width  = function () return math.ceil(self.Width() / 2 * (1-from*8)) end
-				segment.Height = function () return math.ceil(self.Height() / 2) end
-			end
 
-			if odd_sector then
-				-- flip image along diagonal
-				segment:SetUV(1, 1, 0, 0)
-			else
-				if to >= 1/8-0.01 then
-					-- hack to prevent ugly seams
-					-- smear out texture a bit so that we overlap slightly into next sector
-					-- TODO: try fixing the texture 
-					-- TODO: or alternatively, put something of the same color behind the two sectors
-					segment:SetUV(0.02, 0.02, 1, 1)
-				end
-			end
+		-- calculate coordinates for segment
+		local segment = Bitmap(self, get_color_texture(color))
 
-			segment.Depth:Set(function () return self.Depth() + 50 - idx end) -- hack to sort this in reverse (let's hope there aren't ever more than 50 segments...)
 
-			table.insert(self.pie_elements, segment)
+		-- inner corner, X
+		if sector < 2 or sector > 5 then
+			-- right sectors
+			segment.Left = function() return self:centerX() end
+		else
+			-- left sectors
+			segment.Right = function() return self:centerX() end
 		end
+
+		-- inner corner, Y
+		if sector < 4 then
+			-- upper sectors
+			segment.Bottom = function() return self:centerY() end
+		else
+			-- lower sectors
+			segment.Top = function() return self:centerY() end
+		end
+
+
+
+		local tan_alpha;
+		if odd_sector then
+			tan_alpha = math.tan(math.pi/4-from)
+	    else
+			tan_alpha = math.tan(to)
+		end
+
+		-- segment size, this creates the actual size of the segment
+		if sector == 0 or sector == 7 or sector == 3 or sector == 4 then
+			segment.Width  = function() return math.ceil(self.Width()/2) end
+			segment.Height = function() return math.ceil(self.Height()/2 * tan_alpha) end
+		else
+			segment.Width  = function() return math.ceil(self.Width()/2 * tan_alpha) end
+			segment.Height = function() return math.ceil(self.Height()/2) end
+		end
+
+		-- flip segment if necessary (segment 0 is not flipped)
+		--   \  Y | XY /
+		--  3 \ 2 | 1 / 0
+		--  X  \  |  /  -
+		--  ---------------
+		--  XY /  |  \  Y
+		--  4 / 5 | 6 \ 7
+		--   /  - | X  \
+		if sector == 1 or sector == 4 then
+			-- flip X and Y
+			segment:SetUV(1, 1, 0, 0)
+		elseif sector == 2 or sector == 7 then
+			-- flip Y only
+			segment:SetUV(0, 1, 1, 0)
+		elseif sector == 3 or sector == 6 then
+			-- flip X only
+			segment:SetUV(1, 0, 0, 1)
+		else
+		    -- no flipping required
+			segment:SetUV(0, 0, 1, 1) -- u0, v0, u1, v1
+		end
+
+
+
+		--LOG("  >>> adding segment nr " .. tostring(idx) .. " (in sector " .. tostring(sector) .. " odd? "..tostring(odd_sector)..") from " .. tostring(helpers.rad2deg(from)) .. "deg to " .. tostring(helpers.rad2deg(to)) .. "deg")
+		--LOG("      tan = " .. tostring(tan_alpha))
+
+		-- hack to sort this in reverse (let's hope there aren't ever more than 50 segments...)
+		segment.Depth:Set(function () return self.Depth() + 50 - idx end)
+
+		table.insert(self.pie_elements, segment)
 
 	end
 
