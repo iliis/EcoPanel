@@ -110,6 +110,7 @@ PieChart = Class(Group) {
 				-- segment spans sector border
 				-- add segment from last value up until border
 				local border_angle = (self:angle_to_sector(last_angle)+1)/8
+				self:add_segment_border_bg(self:angle_to_sector(last_angle), idx)
 				self:add_segment(last_angle, border_angle, idx)
 				last_angle = border_angle
 			end
@@ -117,6 +118,42 @@ PieChart = Class(Group) {
 			self:add_segment(last_angle, next_angle, idx)
 			last_angle = next_angle
 		end
+	end,
+
+
+	-- on the 45degree borders between segments there is an ugly line as the textures don't fully overlap
+	-- the solution? add a background of the same color as the segment that is cut in two there
+	add_segment_border_bg = function(self, from_sector, color)
+		if helpers.modulo(from_sector, 2) > 0 then
+			-- we're on a vertical border between segments (e.g. segment 1 and 2) -> no aliasing, so no background fill required
+			return
+		end
+
+		--LOG("adding bg segment for sector "..tostring(from_sector).."/"..tostring(from_sector+1).." with color "..get_color_texture(color))
+
+		local bg = Bitmap(self, get_color_texture(color))
+
+		if from_sector == 0 or from_sector == 6 then
+			-- right half
+			bg.Left = function() return self:centerX() end
+		else
+			-- left half
+			bg.Left = function() return self.Left() end
+		end
+
+		if from_sector == 0 or from_sector == 2 then
+			-- top half
+			bg.Top = function() return self.Top() end
+		else
+			-- bottom half
+			bg.Top = function() return self:centerY() end
+		end
+
+		bg.Width  = function() return self.Width()/2 end
+		bg.Height = function() return self.Height()/2 end
+
+		bg:SetUV(0.5, 0.5, 1, 1) -- draw full rectangle
+		bg.Depth:Set(function () return self.background.Depth() + 1 end)
 	end,
 
 
