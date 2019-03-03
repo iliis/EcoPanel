@@ -115,6 +115,11 @@ PieChart = Class(Group) {
 	end,
 
 
+	-- this function is private and will be called by plot()
+	-- as the engine is quite restricted, we can maximally draw 1/8th of the full circle at a time
+	-- plot() takes care of splitting the actual segments into smaller ones, so they fit into 8 quadrants
+	-- each of these smaller segments is then drawn by add_segment()
+	-- we therefore expect 'from' and 'to' angles to be in the same sector (1/8th = 45 degrees)
 	add_segment = function(self, from, to, color)
 		local sector = self:angle_to_sector(from)
 		local odd_sector = helpers.modulo(sector, 2) > 0

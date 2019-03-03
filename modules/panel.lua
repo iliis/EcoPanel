@@ -94,7 +94,16 @@ function create()
     bg.Height:Set(panel.Height()-4)
 
     -- close button
-    local close_button = helpers.create_button(panel, "X", 70, 60)
+    --local close_button = helpers.create_button(panel, "X", 70, 60)
+	local close_button= Button(panel,
+		'/mods/EcoPanel/textures/close_btn/close_btn_dis.png',
+		'/mods/EcoPanel/textures/close_btn/close_btn_down.png',
+		'/mods/EcoPanel/textures/close_btn/close_btn_over.png',
+		'/mods/EcoPanel/textures/close_btn/close_btn_dis.png')
+	close_button:EnableHitTest(true)
+	close_button.Depth:Set(panel.Depth() + 10)
+	close_button.Width:Set(48)
+	close_button.Height:Set(48)
     close_button.Top  :Set(panel.Top() + 5)
     close_button.Right:Set(panel.Right() - 5)
     close_button.OnClick = function (self, modifiers)
