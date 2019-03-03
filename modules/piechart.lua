@@ -1,6 +1,7 @@
 local Bitmap = import('/lua/maui/bitmap.lua').Bitmap
 local UIUtil = import('/lua/ui/uiutil.lua')
 local Group = import('/lua/maui/group.lua').Group
+local Control = import('/lua/maui/control.lua').Control
 
 local helpers = import('/mods/EcoPanel/modules/helpers.lua')
 
@@ -50,6 +51,8 @@ PieChart = Class(Group) {
 		Group.__init(self, parent)
 
 		self.values = values
+		self.normalized_values = normalize_list(self.values)
+
 		self.pie_elements = {}
 
 		self.background = Bitmap(parent)
@@ -70,6 +73,37 @@ PieChart = Class(Group) {
 		self.mask.Width  = self.Width
 		self.mask.Height = self.Height
 		self.mask.Depth:Set(function () return self.Depth() + 100 end)
+
+		local chart = self
+		self.mask.HandleEvent = function (self, event)
+			if event.Type == 'MouseMotion' then
+				--LOG("mouse over: " .. tostring(event.MouseX) .. ", " .. tostring(event.MouseY))
+				LOG("hover segment: " .. tostring(chart:segment_from_cursor(event.MouseX, event.MouseY)))
+			else
+				LOG(tostring(event.Type))
+			end
+		end
+	end,
+
+	segment_from_cursor = function (self, MouseX, MouseY)
+		-- calculate angle from center of pie chart to mouse cursor
+		local rel_x = MouseX - self:centerX()
+		local rel_y = MouseY - self:centerY()
+		local angle = math.atan2(rel_y, rel_x)
+
+		-- convert from +pi to -pi radians to 0-1
+		angle = 1-helpers.modulo(angle / math.pi / 2, 1)
+
+		-- find corresponding segment
+		local from_val = 0
+		for idx, value in self.normalized_values do
+			-- +eps is required as normalized_values don't necessarily sum exactly to 1
+			if from_val <= angle and angle < from_val + value + 0.00001 then
+				return idx
+			end
+			from_val = from_val + value
+		end
+		return nil
 	end,
 
 	centerX = function(self)
@@ -96,13 +130,11 @@ PieChart = Class(Group) {
 
 		self.pie_elements = {}
 
-		local normalized_values = normalize_list(self.values)
-
 		-- from 0 to 1
 		local last_angle = 0
 		local next_angle = 0
 
-		for idx, value in normalized_values do
+		for idx, value in self.normalized_values do
 			--LOG("plotting segment nr " .. tostring(idx) .. " for value " .. tostring(value))
 			next_angle = next_angle + value
 
