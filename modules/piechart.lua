@@ -6,26 +6,6 @@ local Control = import('/lua/maui/control.lua').Control
 local helpers = import('/mods/EcoPanel/modules/helpers.lua')
 
 
-local textures = { }
-local texture_count = 0
-
--- load textures
--- (i counts from 1!)
-for i, filename in DiskFindFiles('/mods/EcoPanel/textures/triangle/', '*.png') do
-	local name = Basename(filename, true)
-	textures[name] = filename
-	textures[i-1] = filename
-	texture_count = i
-end
-
-function get_color_texture(idx)
-	return textures[helpers.modulo(idx, texture_count)]
-end
-
-
-function get_colors()
-	return textures
-end
 
 
 function normalize_list(values)
@@ -43,17 +23,45 @@ function normalize_list(values)
 	return normalized
 end
 
-
-
 PieChart = Class(Group) {
 
-	__init = function(self, parent, values)
+	textures = { },
+	texture_count = 0,
+	pie_pieces = {},
+
+	get_color_texture = function (self, idx)
+		return self.textures[helpers.modulo(idx, self.texture_count)]
+	end,
+
+	__init = function(self, parent, values, colors)
 		Group.__init(self, parent)
 
-		self.values = values
-		self.normalized_values = normalize_list(self.values)
+		colors = colors or '/mods/EcoPanel/textures/triangle/'
+		self.pie_pieces = {}
 
-		self.pie_elements = {}
+		-- load textures
+		-- (i counts from 1!)
+		self.textures = {}
+		self.texture_count = 0
+		for i, filename in DiskFindFiles(colors, '*.png') do
+			local name = Basename(filename, true)
+			self.textures[name] = filename
+			self.textures[i-1] = filename
+			self.texture_count = i
+		end
+
+		-- load values
+		local normalized_values = normalize_list(values)
+		for idx, value in values do
+			-- TODO: use object with callbacks here
+			table.insert(self.pie_pieces, {
+				idx = idx,
+				value = value,
+				normalized_value = normalized_values[idx],
+				color = self:get_color_texture(idx),
+				segments = {} -- segments (cut, so that they fit into 1/8th's)
+			})
+		end
 
 		self.background = Bitmap(parent)
 		self.background :SetSolidColor('ff330000')
@@ -96,12 +104,12 @@ PieChart = Class(Group) {
 
 		-- find corresponding segment
 		local from_val = 0
-		for idx, value in self.normalized_values do
+		for idx, piece in self.pie_pieces do
 			-- +eps is required as normalized_values don't necessarily sum exactly to 1
-			if from_val <= angle and angle < from_val + value + 0.00001 then
+			if from_val <= angle and angle < from_val + piece.normalized_value + 0.00001 then
 				return idx
 			end
-			from_val = from_val + value
+			from_val = from_val + piece.normalized_value
 		end
 		return nil
 	end,
@@ -128,26 +136,27 @@ PieChart = Class(Group) {
 
 	plot = function(self)
 
-		self.pie_elements = {}
-
 		-- from 0 to 1
 		local last_angle = 0
 		local next_angle = 0
 
-		for idx, value in self.normalized_values do
-			--LOG("plotting segment nr " .. tostring(idx) .. " for value " .. tostring(value))
-			next_angle = next_angle + value
+		for idx, piece in self.pie_pieces do
+			--LOG("plotting segment nr " .. tostring(idx) .. " for value " .. tostring(piece.normalized_value))
+			next_angle = next_angle + piece.normalized_value
+			piece.segments = {}
 
 			while self:angle_to_sector(last_angle) != self:angle_to_sector(next_angle) do
 				-- segment spans sector border
 				-- add segment from last value up until border
 				local border_angle = (self:angle_to_sector(last_angle)+1)/8
-				self:add_segment_border_bg(self:angle_to_sector(last_angle), idx)
-				self:add_segment(last_angle, border_angle, idx)
+
+				self:add_segment_border_bg(piece, self:angle_to_sector(last_angle))
+				self:add_segment(piece, last_angle, border_angle)
+
 				last_angle = border_angle
 			end
 
-			self:add_segment(last_angle, next_angle, idx)
+			self:add_segment(piece, last_angle, next_angle)
 			last_angle = next_angle
 		end
 	end,
@@ -155,7 +164,7 @@ PieChart = Class(Group) {
 
 	-- on the 45degree borders between segments there is an ugly line as the textures don't fully overlap
 	-- the solution? add a background of the same color as the segment that is cut in two there
-	add_segment_border_bg = function(self, from_sector, color)
+	add_segment_border_bg = function(self, piece, from_sector)
 		if helpers.modulo(from_sector, 2) > 0 then
 			-- we're on a vertical border between segments (e.g. segment 1 and 2) -> no aliasing, so no background fill required
 			return
@@ -163,7 +172,7 @@ PieChart = Class(Group) {
 
 		--LOG("adding bg segment for sector "..tostring(from_sector).."/"..tostring(from_sector+1).." with color "..get_color_texture(color))
 
-		local bg = Bitmap(self, get_color_texture(color))
+		local bg = Bitmap(self, piece.color)
 
 		if from_sector == 0 or from_sector == 6 then
 			-- right half
@@ -195,7 +204,7 @@ PieChart = Class(Group) {
 	-- each of these smaller segments is then drawn by add_segment()
 	-- we therefore expect 'from' and 'to' angles to be in the same sector (1/8th = 45 degrees)
 	-- attention: angles (from and to) are in percent of 360 degrees, ie. go from 0 to 1!
-	add_segment = function(self, from, to, color)
+	add_segment = function(self, piece, from, to)
 
 		-- ignore very small or degenerate segments
 		if math.abs(to-from) < 0.00001 then
@@ -205,7 +214,7 @@ PieChart = Class(Group) {
 		local sector = self:angle_to_sector(from)
 		local odd_sector = helpers.modulo(sector, 2) > 0
 
-		local idx = table.getn(self.pie_elements)
+		local idx = piece.idx
 
 		-- even sectors are painted in normal order, odd sectors are painted in reverse
 		if odd_sector then
@@ -222,7 +231,7 @@ PieChart = Class(Group) {
 
 
 		-- calculate coordinates for segment
-		local segment = Bitmap(self, get_color_texture(color))
+		local segment = Bitmap(self, piece.color)
 
 
 		-- inner corner, X
@@ -291,7 +300,7 @@ PieChart = Class(Group) {
 		-- hack to sort this in reverse (let's hope there aren't ever more than 50 segments...)
 		segment.Depth:Set(function () return self.Depth() + 50 - idx end)
 
-		table.insert(self.pie_elements, segment)
+		table.insert(piece.segments, segment)
 
 	end
 

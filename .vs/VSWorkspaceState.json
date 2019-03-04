@@ -1,6 +1,9 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\modules",
+    "\\textures",
+    "\\textures\\close_btn"
   ],
   "SelectedNode": "\\readme.md",
   "PreviewInSolutionExplorer": false

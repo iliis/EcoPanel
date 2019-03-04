@@ -39,11 +39,7 @@ Limitations:
   small hack. This could easily be fixed if required.
 
 TODO:
-- Parametrize texture folder, so the library can be used with different colors
-  if so desired, without having to edit pie-chart drawing code.
-- Draw diagonal lines out from segments to some textboxes.
+- Draw diagonal lines out from segments to some textboxes. Probably in a second class.
 - Implement interactivity (hover, select), both via mouse and via API (so that
   for example you can highlight something in the chart based on your currently
-  selected unit).
-- Use objects to store values, so that we can add more info (like the original
-  value or some text) and callbacks.
+  selected unit). Add callbacks.
