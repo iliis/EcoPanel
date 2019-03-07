@@ -58,6 +58,7 @@ function create()
     panel:DisableHitTest(true)
 
 	local PieChart = import('/mods/EcoPanel/modules/piechart.lua').PieChart
+	local PieChartPopup = import('/mods/EcoPanel/modules/piechart_popup.lua').PieChartPopup
 
 	local chart = PieChart(panel, {1,5,20,5,30,18,20,10,20,30,40,10,10,10})
 	--local chart = PieChart(panel, {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1})
@@ -70,6 +71,8 @@ function create()
 	chart.pie_clicked_callback = function (segment)
 		LOG("clicked segment " .. tostring(segment.idx) .. " with value " .. tostring(segment.value))
 	end
+
+	local popup = PieChartPopup(panel, chart)
     
     -- catch mouse clicks by putting the UI in front of game, we don't want to be able to click through our panel
     panel.Depth:Set(100)

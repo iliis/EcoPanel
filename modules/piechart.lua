@@ -65,6 +65,8 @@ PieChart = Class(Group) {
 				segments = {}, -- segments (cut, so that they fit into 1/8th's)
 				overlays_bright = {}, -- white transparent overlay to brighten this piece
 				overlays_dark   = {}, -- black transparent overlay to darken this piece
+				angle_from = nil,
+				angle_to = nil,
 			})
 		end
 
@@ -162,6 +164,7 @@ PieChart = Class(Group) {
 			piece.segments = {}
 			piece.overlays_bright = {}
 			piece.overlays_dark   = {}
+			piece.angle_from = last_angle * math.pi * 2 -- convert to rad
 
 			while self:angle_to_sector(last_angle) != self:angle_to_sector(next_angle) do
 				-- segment spans sector border
@@ -174,6 +177,7 @@ PieChart = Class(Group) {
 				last_angle = border_angle
 			end
 
+			piece.angle_to = next_angle * math.pi * 2 -- convert to rad
 			self:add_segment(piece, last_angle, next_angle)
 			last_angle = next_angle
 		end
